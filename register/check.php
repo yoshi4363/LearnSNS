@@ -1,11 +1,33 @@
 <?php  
     session_start();
+    // require先のコード全行を置き換える処理
+    require("../dbconnect.php");
+
+    if (!isset($_SESSION["register"])) {
+        header("Location: signup.php");
+        exit();
+    }
 
     // ①
     $name = $_SESSION["register"]["name"];
     $email = $_SESSION["register"]["email"];
     $password = $_SESSION["register"]["password"];
     $img_name = $_SESSION["register"]["img_name"];
+
+    // submitされた時の処理
+    if (!empty($_POST)) {
+      // NOW()：MYSQLの関数。日付と時刻を取得する。
+        $sql = "INSERT INTO `users` SET `name`=?, `email`=?, `password`=?, `img_name`=?, `created`=NOW()";
+        // password_hash()関数：第一引数にハッシュ化したい文字列、第二引数にPASSWORD_DEFAULTを記述する
+        $data = array($name, $email, password_hash($password, PASSWORD_DEFAULT), $img_name);
+        $stmt = $dbh->prepare($sql);
+        $stmt->execute($data);
+
+        // unset()関数：指定した変数や配列を破棄する
+        unset($_SESSIOON["register"]);
+        header("Location: thanks.php");
+        exit();
+    }
 ?>
 <!DOCTYPE html>
 <html lang="ja">
@@ -44,7 +66,7 @@
               <!-- ④ -->
               <a href="signup.php?action=rewrite" class="btn btn-default">&laquo;&nbsp;戻る</a>
               <!-- ⑤ -->
-              <input type="hidden" name="action" value="submit">
+              <input type="hidden" name="hogehoge" value="hogehoge">
               <input type="submit" name="" class="btn btn-primary" value="ユーザー登録">
             </form>
           </div>
