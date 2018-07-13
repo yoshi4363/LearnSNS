@@ -10,7 +10,7 @@
 
     $errors = array();
 
-    if (!empty($_POST)) {
+    if (!empty($_POST["feed"])) {
         $feed = $_POST["feed"];
         if (isset($feed) && $feed == "") {
             $errors["feed"] = "blank";
@@ -29,16 +29,30 @@
     $data = array();
     $stmt = $dbh->prepare($sql);
     $stmt->execute($data);
-
+    
     // 表示用の配列を用意
     $feeds = array();
 
     while (true) {
-        $rec = $stmt->fetch(PDO::FETCH_ASSOC);
-        if ($rec == false) {
+        $record = $stmt->fetch(PDO::FETCH_ASSOC);
+
+        if ($record == false) {
             break;
         }
-        $feeds[] = $rec;
+        
+        // いいね済みか判断するコード
+        $like_flag_sql = "SELECT COUNT(*) AS `like_flag` FROM `likes` WHERE `user_id`=? AND `feed_id`=?";
+        $like_flag_data = array($_SESSION["id"], $record["id"]);
+        $like_flag_stmt = $dbh->prepare($like_flag_sql);
+        $like_flag_stmt->execute($like_flag_data);
+        $like_flag_likes = $like_flag_stmt->fetch(PDO::FETCH_ASSOC);
+
+        if ($like_flag_likes["like_flag"] > 0) {
+            $record["like_flag"] = 1;
+        }else{
+            $record["like_flag"] = 0;
+        }
+        $feeds[] = $record;
     }
 ?>
 <!DOCTYPE html>
@@ -107,6 +121,8 @@
             <input type="submit" value="投稿する" class="btn btn-primary">
           </form>
         </div>
+
+        <!-- 繰り返し処理 -->
         <?php foreach($feeds as $feed) { ?>
           <div class="thumbnail">
             <div class="row">
@@ -125,20 +141,30 @@
             </div>
             <div class="row feed_sub">
               <div class="col-xs-12">
-                <form method="POST" action="" style="display: inline;">
-                  <input type="hidden" name="feed_id" >
-                  
+                <?php if ($feed["like_flag"] == 0) { ?>
+                <form method="POST" action="like.php" style="display: inline;">
+                  <input type="hidden" name="feed_id" value="<?php echo $feed['id']; ?>">
                     <input type="hidden" name="like" value="like">
                     <button type="submit" class="btn btn-default btn-xs"><i class="fa fa-thumbs-up" aria-hidden="true"></i>いいね！</button>
                 </form>
+                <?php }else{ ?>
+                <form method="POST" action="unlike.php" style="display: inline;">
+                  <input type="hidden" name="feed_id" value="<?php echo $feed['id']; ?>">
+                    <input type="hidden" name="like" value="like">
+                    <button type="submit" class="btn btn-default btn-xs"><i class="fa fa-thumbs-up" aria-hidden="true"></i>いいね！を取り消す</button>
+                </form>
+                <?php } ?>
                 <span class="like_count">いいね数 : 100</span>
                 <span class="comment_count">コメント数 : 9</span>
                   <a href="edit.php?feed_id=<?php echo $feed['id']; ?>" class="btn btn-success btn-xs">編集</a>
-                  <a href="delete.php?feed_id=<?php echo $feed['id']; ?>" class="btn btn-danger btn-xs">削除</a>
+                  <!-- confirm()：確認ダイアログ表示（括弧内の文字が表示される） -->
+                  <a onclick="return confirm('ほんとに消すの？')" href="delete.php?feed_id=<?php echo $feed['id']; ?>" class="btn btn-danger btn-xs">削除</a>
               </div>
             </div>
           </div>
         <?php } ?>
+        <!-- 繰り返し終了 -->
+
         <div aria-label="Page navigation">
           <ul class="pager">
             <li class="previous disabled"><a href="#"><span aria-hidden="true">&larr;</span> Older</a></li>
