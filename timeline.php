@@ -39,7 +39,14 @@
         if ($record == false) {
             break;
         }
-        
+        // いいね数を取得するコード
+        $like_sql = "SELECT COUNT(*) AS `like_count` FROM `likes` WHERE `feed_id`=?";
+        $like_data = array($record["id"]);
+        $like_stmt = $dbh->prepare($like_sql);
+        $like_stmt->execute($like_data);
+        $like = $like_stmt->fetch(PDO::FETCH_ASSOC);
+        $record["like_count"] = $like["like_count"];
+
         // いいね済みか判断するコード
         $like_flag_sql = "SELECT COUNT(*) AS `like_flag` FROM `likes` WHERE `user_id`=? AND `feed_id`=?";
         $like_flag_data = array($_SESSION["id"], $record["id"]);
@@ -154,7 +161,7 @@
                     <button type="submit" class="btn btn-default btn-xs"><i class="fa fa-thumbs-up" aria-hidden="true"></i>いいね！を取り消す</button>
                 </form>
                 <?php } ?>
-                <span class="like_count">いいね数 : 100</span>
+                <span class="like_count">いいね数 : <?php echo $feed["like_count"]; ?></span>
                 <span class="comment_count">コメント数 : 9</span>
                   <a href="edit.php?feed_id=<?php echo $feed['id']; ?>" class="btn btn-success btn-xs">編集</a>
                   <!-- confirm()：確認ダイアログ表示（括弧内の文字が表示される） -->
