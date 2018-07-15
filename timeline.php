@@ -126,7 +126,7 @@
       <div class="collapse navbar-collapse" id="navbar-collapse1">
         <ul class="nav navbar-nav">
           <li class="active"><a href="#">タイムライン</a></li>
-          <li><a href="#">ユーザー一覧</a></li>
+          <li><a href="user_index.php">ユーザー一覧</a></li>
         </ul>
         <form method="POST" action="" class="navbar-form navbar-left" role="search">
           <div class="form-group">
@@ -213,9 +213,11 @@
                   <?php } ?>
                 </a>
 
+                <?php if ($feed["user_id"] == $_SESSION["id"]) { ?>
                   <a href="edit.php?feed_id=<?php echo $feed['id']; ?>" class="btn btn-success btn-xs">編集</a>
                   <!-- confirm()：確認ダイアログ表示（括弧内の文字が表示される） -->
                   <a onclick="return confirm('ほんとに消すの？')" href="delete.php?feed_id=<?php echo $feed['id']; ?>" class="btn btn-danger btn-xs">削除</a>
+                  <?php } ?>
               </div>
               <?php include("comment_view.php"); ?>
             </div>
