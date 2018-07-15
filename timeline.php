@@ -25,7 +25,16 @@
         }
     }
 
-    $sql = "SELECT `f`.*, `u`.`name`, `u`.`img_name` FROM `feeds` AS `f` LEFT JOIN `users` AS `u` ON `f`.`user_id` = `u`.`id` WHERE 1 ORDER BY `f`.`created` DESC";
+    // 検索ボタンが押された際に「あいまい検索」
+    // 検索ボタンにてsubmitされたらsearch_wordにてPOST送信されてくる
+    if (isset($_POST["search_word"]) == true) {
+        // あいまい検索用のSQL文（LIKE演算子）
+        $sql = "SELECT `f`.*, `u`.`name`, `u`.`img_name` FROM `feeds` AS `f` LEFT JOIN `users` AS `u` ON `f`.`user_id` = `u`.`id` WHERE `f`.`feed` LIKE '%".$_POST['search_word']."%' ORDER BY `f`.`created` DESC";
+    }else{
+    // 通常時（検索ボタンが押されてない時）は全件取得
+        $sql = "SELECT `f`.*, `u`.`name`, `u`.`img_name` FROM `feeds` AS `f` LEFT JOIN `users` AS `u` ON `f`.`user_id` = `u`.`id` WHERE 1 ORDER BY `f`.`created` DESC";
+    }
+
     $data = array();
     $stmt = $dbh->prepare($sql);
     $stmt->execute($data);
@@ -39,6 +48,25 @@
         if ($record == false) {
             break;
         }
+
+        $comment_sql = "SELECT `c`.*, `u`.`name`, `u`.`img_name` FROM `comments` AS `c` LEFT JOIN `users` AS `u` ON `c`.`user_id` = `u`.`id` WHERE `feed_id`=?";
+        $comment_data = array($record["id"]);
+        $comment_stmt = $dbh->prepare($comment_sql);
+        $comment_stmt->execute($comment_data);
+
+        // 空の配列用意
+        $comments_array = array();
+
+        while (true) {
+            $comment_record = $comment_stmt->fetch(PDO::FETCH_ASSOC);
+            if ($comment_record == false) {
+                break;
+            }
+            $comments_array[] = $comment_record;
+        }
+
+        $record["comments"] = $comments_array;
+
         // いいね数を取得するコード
         $like_sql = "SELECT COUNT(*) AS `like_count` FROM `likes` WHERE `feed_id`=?";
         $like_data = array($record["id"]);
@@ -59,7 +87,19 @@
         }else{
             $record["like_flag"] = 0;
         }
-        $feeds[] = $record;
+
+        // 「いいね！済み」が押された際に、既にいいねされているものだけを配列に代入する
+        if (isset($_GET["feed_select"]) && $_GET["feed_select"] == "likes" && $record["like_flag"] == 1) {
+            $feeds[] = $record;
+        // 「いいね！済み」押されてない時は全件表示
+        }elseif(!isset($_GET["feed_select"])){
+            $feeds[] = $record;
+        }
+
+        // 新着順が押された時は全件表示
+        if (isset($_GET["feed_select"]) && $_GET["feed_select"] == "news") {
+            $feeds[] = $record;
+        }
     }
 ?>
 <!DOCTYPE html>
@@ -88,7 +128,7 @@
           <li class="active"><a href="#">タイムライン</a></li>
           <li><a href="#">ユーザー一覧</a></li>
         </ul>
-        <form method="GET" action="" class="navbar-form navbar-left" role="search">
+        <form method="POST" action="" class="navbar-form navbar-left" role="search">
           <div class="form-group">
             <input type="text" name="search_word" class="form-control" placeholder="投稿を検索">
           </div>
@@ -161,12 +201,23 @@
                     <button type="submit" class="btn btn-default btn-xs"><i class="fa fa-thumbs-up" aria-hidden="true"></i>いいね！を取り消す</button>
                 </form>
                 <?php } ?>
-                <span class="like_count">いいね数 : <?php echo $feed["like_count"]; ?></span>
-                <span class="comment_count">コメント数 : 9</span>
+                <?php if ($feed["like_count"] > 0) { ?>
+                  <span class="like_count">いいね数 : <?php echo $feed["like_count"]; ?></span>
+                <?php } ?>
+
+                <a href="#collapseComment<?php echo $feed["id"]; ?>" data-toggle="collapse" aria-expanded="false">
+                  <?php if ($feed["comment_count"] == 0) { ?>
+                    <span class="comment_count">コメント</span>
+                  <?php }else{ ?>
+                    <span class="comment_count">コメント数 : <?php echo $feed["comment_count"]; ?></span>
+                  <?php } ?>
+                </a>
+
                   <a href="edit.php?feed_id=<?php echo $feed['id']; ?>" class="btn btn-success btn-xs">編集</a>
                   <!-- confirm()：確認ダイアログ表示（括弧内の文字が表示される） -->
                   <a onclick="return confirm('ほんとに消すの？')" href="delete.php?feed_id=<?php echo $feed['id']; ?>" class="btn btn-danger btn-xs">削除</a>
               </div>
+              <?php include("comment_view.php"); ?>
             </div>
           </div>
         <?php } ?>
