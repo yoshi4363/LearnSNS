@@ -1,4 +1,6 @@
 <?php
+    session_start();
+
     require("dbconnect.php");
 
     // sql文について
@@ -6,6 +8,12 @@
     // execute文：準備された文の実行（execute：実行する）
     // fetch文：DB検索結果から１件取得する（取得後、次のレコードへ移動）（fetch：取ってくる）
     // PDO::FETCH_ASSOC：カラム名をキーに連想配列でデータ取得（PDO：）
+
+    $signin_sql = "SELECT `name`, `img_name` FROM `users` WHERE `id`=?";
+    $signin_data = array($_SESSION["id"]);
+    $signin_stmt = $dbh->prepare($signin_sql);
+    $signin_stmt->execute($signin_data);
+    $signin_user = $signin_stmt->fetch(PDO::FETCH_ASSOC);
 
     // ユーザー一覧表示のための情報取得
     $sql = "SELECT * FROM `users`";
@@ -69,7 +77,7 @@
         </form>
         <ul class="nav navbar-nav navbar-right">
           <li class="dropdown">
-            <a href="#" class="dropdown-toggle" data-toggle="dropdown" role="button" aria-haspopup="true" aria-expanded="false"><img src="" width="18" class="img-circle">test <span class="caret"></span></a>
+            <a href="#" class="dropdown-toggle" data-toggle="dropdown" role="button" aria-haspopup="true" aria-expanded="false"><img src="user_profile_img/<?php echo $signin_user['img_name']; ?>" width="18" class="img-circle"> <?php echo $signin_user['name']; ?><span class="caret"></span></a>
             <ul class="dropdown-menu">
               <li><a href="signout.php">サインアウト</a></li>
             </ul>
@@ -91,8 +99,8 @@
               <img src="user_profile_img/<?php echo $user["img_name"]; ?>" width="80">
             </div>
             <div class="col-xs-11">
-              名前 <?php echo $user["name"]; ?><br>
-              <a href="#" style="color: #7F7F7F;"><?php echo $user["created"]; ?>からメンバー</a>
+              <a href="profile.php?user_id=<?php echo $user['id']; ?>" style="color: #7F7F7F;">名前 <?php echo $user["name"]; ?><br></a>
+              <span><?php echo $user["created"]; ?>からメンバー</span>
             </div>
           </div>
           
