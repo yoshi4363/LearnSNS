@@ -25,14 +25,49 @@
         }
     }
 
+    // ページネーション処理
+    $page = ""; // ページ番号（何ページ目か）が入る変数
+    $page_row_number = 5; // １ページに表示するデータの数
+
+    if (isset($_GET["page"])) {
+        $page = $_GET["page"];
+    }else{
+        // GET送信されてるページ数がないなら１ページ目とみなす
+        $page = 1;
+    }
+
+    // max関数：引数の中で最大の値を返す
+    $page = max($page,1);
+
+    // 投稿データ数から最大ページ数を計算する
+    $count_sql = "SELECT COUNT(*) AS `count` FROM `feeds`";
+    $count_data = array();
+    $count_stmt = $dbh->prepare($count_sql);
+    $count_stmt->execute($count_data);
+
+    $count_record = $count_stmt->fetch(PDO::FETCH_ASSOC);
+
+    // ページ数の計算
+    // ceil関数：小数点を切り上げる
+    $all_page_number = ceil($count_record["count"] / $page_row_number);
+
+    // min関数：引数の中で最小の値を返す（max関数の逆）
+    $page = min($page,$all_page_number);
+
+    // データを取得する開始番号の計算
+    $start = ($page -1)*$page_row_number;
+    // ページネーション処理終了
+
     // 検索ボタンが押された際に「あいまい検索」
     // 検索ボタンにてsubmitされたらsearch_wordにてPOST送信されてくる
     if (isset($_POST["search_word"]) == true) {
         // あいまい検索用のSQL文（LIKE演算子）
         $sql = "SELECT `f`.*, `u`.`name`, `u`.`img_name` FROM `feeds` AS `f` LEFT JOIN `users` AS `u` ON `f`.`user_id` = `u`.`id` WHERE `f`.`feed` LIKE '%".$_POST['search_word']."%' ORDER BY `f`.`created` DESC";
     }else{
-    // 通常時（検索ボタンが押されてない時）は全件取得
-        $sql = "SELECT `f`.*, `u`.`name`, `u`.`img_name` FROM `feeds` AS `f` LEFT JOIN `users` AS `u` ON `f`.`user_id` = `u`.`id` WHERE 1 ORDER BY `f`.`created` DESC";
+        // 通常時（検索ボタンが押されてない時）は全件取得
+        // LIMIT句：SELECT時に取得するデータの件数に上限を設ける（ORDER BY句の後に記述）
+        // 構文：LIMIT 取得開始番号（０から始まる）,取得したい件数
+        $sql = "SELECT `f`.*, `u`.`name`, `u`.`img_name` FROM `feeds` AS `f` LEFT JOIN `users` AS `u` ON `f`.`user_id` = `u`.`id` WHERE 1 ORDER BY `f`.`created` DESC LIMIT $start,$page_row_number";
     }
 
     $data = array();
@@ -151,8 +186,13 @@
     <div class="row">
       <div class="col-xs-3">
         <ul class="nav nav-pills nav-stacked">
-          <li class="active"><a href="timeline.php?feed_select=news">新着順</a></li>
-          <li><a href="timeline.php?feed_select=likes">いいね！済み</a></li>
+          <?php if (isset($_GET["feed_select"]) && $_GET["feed_select"] == "likes") { ?>
+            <li><a href="timeline.php?feed_select=news">新着順</a></li>
+            <li class="active"><a href="timeline.php?feed_select=likes">いいね！済み</a></li>
+          <?php }else{ ?>
+            <li class="active"><a href="timeline.php?feed_select=news">新着順</a></li>
+            <li><a href="timeline.php?feed_select=likes">いいね！済み</a></li>
+          <?php } ?>
           <!-- <li><a href="timeline.php?feed_select=follows">フォロー</a></li> -->
         </ul>
       </div>
@@ -227,8 +267,18 @@
 
         <div aria-label="Page navigation">
           <ul class="pager">
-            <li class="previous disabled"><a href="#"><span aria-hidden="true">&larr;</span> Older</a></li>
-            <li class="next"><a href="#">Newer <span aria-hidden="true">&rarr;</span></a></li>
+
+            <?php if ($page == 1) { ?>
+              <li class="previous disabled"><a href="#"><span aria-hidden="true">&larr;</span> Older</a></li>
+            <?php }else{ ?>
+              <li class="previous"><a href="timeline.php?page=<?php echo $page-1; ?>"><span aria-hidden="true">&larr;</span> Older</a></li>
+            <?php } ?>
+
+            <?php if ($page == $all_page_number) { ?>
+              <li class="next disabled"><a href="#">Newer <span aria-hidden="true">&rarr;</span></a></li>
+            <?php }else{ ?>
+              <li class="next"><a href="timeline.php?page=<?php echo $page+1; ?>">Newer <span aria-hidden="true">&rarr;</span></a></li>
+            <?php } ?>
           </ul>
         </div>
       </div>
